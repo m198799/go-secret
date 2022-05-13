@@ -25,8 +25,9 @@ const (
 func NewMapper() Mapper {
 	var mapper [][]byte
 	rand.Seed(time.Now().UnixNano())
+	tmp := []byte(MapperStr)
 	for i := 0; i < LENGTH; i++ {
-		tmp := []byte(MapperStr)
+		tmp = []byte(MapperStr)
 		rand.Shuffle(len(tmp), func(i, j int) {
 			tmp[i], tmp[j] = tmp[j], tmp[i]
 		})
