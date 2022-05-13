@@ -3,15 +3,15 @@ package secret
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
+	"time"
 )
 
 type Mapper struct {
-	mapper    [][]byte
-	normalMap []byte
+	mapper [][]byte
+	normal int
 }
 
 const (
@@ -24,14 +24,17 @@ const (
 // NewMapper ...
 func NewMapper() Mapper {
 	var mapper [][]byte
+	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < LENGTH; i++ {
 		tmp := []byte(MapperStr)
-		sliceRange(tmp)
+		rand.Shuffle(len(tmp), func(i, j int) {
+			tmp[i], tmp[j] = tmp[j], tmp[i]
+		})
 		mapper = append(mapper, tmp)
 	}
 	return Mapper{
-		mapper:    mapper,
-		normalMap: mapper[0],
+		mapper: mapper,
+		normal: 0,
 	}
 }
 
@@ -43,11 +46,11 @@ func (m Mapper) Long2String(appID int64) (buffer string, err error) {
 	}
 	numSlice := GetRemainderSlice(math.MaxInt64 - appID)
 	index := numSlice[len(numSlice)-1]
-	end := len(numSlice)-1
-	for _, v := range numSlice[:end]{
+	end := len(numSlice) - 1
+	for _, v := range numSlice[:end] {
 		buffer += string(m.mapper[index][v])
 	}
-	buffer += string(m.normalMap[index])
+	buffer += string(m.mapper[m.normal][index])
 	return
 }
 
@@ -59,19 +62,19 @@ func charAt(str string, n int) byte {
 }
 
 // String2Long ...
-func (m Mapper) String2Long(appID string) (int64, error) {
-	if len(appID) == 0 {
-		return -1, errors.New("must has an app id")
+func (m Mapper) String2Long(id string) (int64, error) {
+	if len(id) == 0 {
+		return -1, errors.New("must has an id")
 	}
-	index, err := m.getIndexKey(appID)
+	index, err := m.getIndexKey(id)
 	if err != nil {
 		return -1, err
 	}
 	var num int64
-	end := len(appID)-1
-	for _, v := range []byte(appID)[:end]{
+	end := len(id) - 1
+	for _, v := range []byte(id)[:end] {
 		n := m.getMapperIndex(v, index)
-		if n == -1{
+		if n == -1 {
 			return -1, errors.New(string(v) + " is not a valid key char!")
 		}
 		num = num*int64(LENGTH) + int64(n)
@@ -79,16 +82,15 @@ func (m Mapper) String2Long(appID string) (int64, error) {
 	num = num*int64(LENGTH) + int64(index)
 	num = math.MaxInt64 - num
 	if num < MixID || num > MaxID {
-		return -1, errors.New("appID " + appID + " is fake")
+		return -1, errors.New("id " + id + " is fake")
 	}
 	return num, nil
 }
 
-
 func (m Mapper) getIndexKey(appID string) (int, error) {
 	indexByte := charAt(appID, len(appID)-1)
 	if indexByte == *new(byte) {
-		return -1, errors.New("未找到")
+		return -1, errors.New("not found")
 	}
 	index := m.getNormalIndex(indexByte)
 	if index == -1 {
@@ -102,52 +104,42 @@ func (m Mapper) getMapperIndex(c byte, index int) int {
 }
 
 func (m Mapper) getNormalIndex(c byte) int {
-	return bytes.IndexByte(m.normalMap, c)
+	return bytes.IndexByte(m.mapper[m.normal], c)
 }
 
 func GetRemainderSlice(rest int64) (stack []int) {
 	if 0 == rest {
-		stack = append(stack,0)
+		stack = append(stack, 0)
 	}
 	for rest != 0 {
-		stack = append(stack, int(rest - (rest/int64(LENGTH))*int64(LENGTH)))
+		stack = append(stack, int(rest-(rest/int64(LENGTH))*int64(LENGTH)))
 		rest = rest / int64(LENGTH)
 	}
 	return reverse(stack)
 }
 
-func reverse(s []int) []int{
-	for i, j := 0, len(s)-1; i < j; i,j = i+1, j-1{
+func reverse(s []int) []int {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
 	return s
 }
 
-// PrintMapper ...
-func (m Mapper) PrintMapper() {
-
-	fmt.Println("{")
-	for i := 0; i < LENGTH -1; i++ {
-		m.printSlice(i)
+// String ...
+func (m Mapper) String() string {
+	buf := bytes.NewBufferString("{\n")
+	for k, _ := range m.mapper {
+		buf.WriteString(m.string(k))
 	}
-	fmt.Println("}")
+	buf.WriteString("}\n")
+	return buf.String()
 }
 
-func (m Mapper) printSlice(n int) {
-	fmt.Printf("{")
-	for i := 0; i < LENGTH; i++ {
-		fmt.Printf("'" + string(m.mapper[n][i]) + "'")
-		if i != LENGTH-1 {
-			fmt.Printf(",")
-		}
+func (m Mapper) string(n int) string {
+	buf := bytes.NewBufferString("{")
+	for _, v := range m.mapper[n] {
+		buf.WriteString("'" + string(v) + "',")
 	}
-	fmt.Println("},")
-}
-
-func sliceRange(byteSlice []byte) {
-	for i := len(byteSlice); i > 1; i-- {
-		last := i-1
-		idx := rand.Intn(i)
-		byteSlice[last], byteSlice[idx] = byteSlice[idx], byteSlice[last]
-	}
+	buf.WriteString("},\n")
+	return buf.String()
 }
