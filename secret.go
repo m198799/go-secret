@@ -15,23 +15,23 @@ type Mapper struct {
 }
 
 const (
-	MapperStr = "0123456789abcdefghijklmnopqrstuvwxyz"
-	LENGTH    = 36
-	MaxID     = 10000000000000 - 1
-	MixID     = 1000000000000
+	LENGTH = 36
+	MaxID  = 10000000000000 - 1
+	MixID  = 1000000000000
 )
+
+var MapperByte = []byte("0123456789abcdefghijklmnopqrstuvwxyz")
 
 // NewMapper ...
 func NewMapper() Mapper {
-	var mapper [][]byte
+	mapper := make([][]byte, LENGTH)
 	rand.Seed(time.Now().UnixNano())
-	tmp := []byte(MapperStr)
-	for i := 0; i < LENGTH; i++ {
-		tmp = []byte(MapperStr)
-		rand.Shuffle(len(tmp), func(i, j int) {
-			tmp[i], tmp[j] = tmp[j], tmp[i]
+	for k, _ := range mapper {
+		mapper[k] = make([]byte, LENGTH)
+		copy(mapper[k], MapperByte)
+		rand.Shuffle(len(mapper[k]), func(i, j int) {
+			mapper[k][i], mapper[k][j] = mapper[k][j], mapper[k][i]
 		})
-		mapper = append(mapper, tmp)
 	}
 	return Mapper{
 		mapper: mapper,
@@ -40,12 +40,12 @@ func NewMapper() Mapper {
 }
 
 // Long2String ...
-func (m Mapper) Long2String(appID int64) (buffer string, err error) {
-	if appID < 0 {
-		err = errors.New("appID is negative")
+func (m Mapper) Long2String(id int64) (buffer string, err error) {
+	if id < 0 {
+		err = errors.New("id is negative")
 		return
 	}
-	numSlice := GetRemainderSlice(math.MaxInt64 - appID)
+	numSlice := GetRemainderSlice(math.MaxInt64 - id)
 	index := numSlice[len(numSlice)-1]
 	end := len(numSlice) - 1
 	for _, v := range numSlice[:end] {
@@ -55,7 +55,7 @@ func (m Mapper) Long2String(appID int64) (buffer string, err error) {
 	return
 }
 
-func charAt(str string, n int) byte {
+func byteAt(str string, n int) byte {
 	if len(str) > n {
 		return []byte(str)[n]
 	}
@@ -76,7 +76,7 @@ func (m Mapper) String2Long(id string) (int64, error) {
 	for _, v := range []byte(id)[:end] {
 		n := m.getMapperIndex(v, index)
 		if n == -1 {
-			return -1, errors.New(string(v) + " is not a valid key char!")
+			return -1, errors.New(string(v) + " is not a valid key byte!")
 		}
 		num = num*int64(LENGTH) + int64(n)
 	}
@@ -88,14 +88,14 @@ func (m Mapper) String2Long(id string) (int64, error) {
 	return num, nil
 }
 
-func (m Mapper) getIndexKey(appID string) (int, error) {
-	indexByte := charAt(appID, len(appID)-1)
+func (m Mapper) getIndexKey(id string) (int, error) {
+	indexByte := byteAt(id, len(id)-1)
 	if indexByte == *new(byte) {
 		return -1, errors.New("not found")
 	}
 	index := m.getNormalIndex(indexByte)
 	if index == -1 {
-		return -1, errors.New(strconv.Itoa(int(indexByte)) + " is not a valid key char!")
+		return -1, errors.New(strconv.Itoa(int(indexByte)) + " is not a valid key byte!")
 	}
 	return index, nil
 }
