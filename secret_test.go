@@ -1,10 +1,3 @@
-/*
- * @Author: panxu
- * @Date: 2022-05-13 10:15:56
- * @LastEditors: panxu
- * @LastEditTime: 2022-05-13 15:03:09
- * @FilePath: /go-secret/secret_test.go
- */
 package secret
 
 import (
@@ -23,14 +16,14 @@ func TestMapper_String(t *testing.T) {
 	fmt.Println(mapper)
 }
 
-func TestLong2String(t *testing.T) {
-	for i := 1; i < 100000; i++ {
-		j := rand.Int63n(9000000000000) + 1000000000000
-		str, err := mapper.Long2String(j)
+func TestMapper_DecodeID(t *testing.T) {
+	for i := 1; i < 10000000; i++ {
+		j := rand.Int63n(MaxID-MixID) + MixID
+		str, err := mapper.EncodeID(j)
 		if err != nil {
 			t.Fatal(err)
 		}
-		id, err := mapper.String2Long(str)
+		id, err := mapper.DecodeID(str)
 		if err != nil {
 			t.Fatal(j, err)
 		}
@@ -40,17 +33,17 @@ func TestLong2String(t *testing.T) {
 	}
 }
 
-func BenchmarkLong2String(b *testing.B) {
+func BenchmarkMapper_EncodeID(b *testing.B) {
 	j := rand.Int63n(9000000000000) + 1000000000000
 	b.ReportAllocs()
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		str, err := mapper.Long2String(j)
+		str, err := mapper.EncodeID(j)
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = mapper.String2Long(str)
+		_, err = mapper.DecodeID(str)
 		if err != nil {
 			b.Fatal(j, err)
 		}
